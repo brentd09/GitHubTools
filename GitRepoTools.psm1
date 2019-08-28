@@ -52,11 +52,14 @@ function Get-FilesFromRepo {
       $GoodChoice = $true
       $choice = Read-Host -Prompt "Choose which repo"
       try {
-        0 + $choice
+        0 + $choice > $null
         $choice = $choice -as [int]
         if ($choice -gt $RepoNames.Count -or $choice -lt 1) {throw}
       }
-      catch {$GoodChoice = $false}
+      catch {
+        $GoodChoice = $false
+        continue
+      }
       $choice = $choice - 1
       $Repository = $RepoNames[$choice]
     } while ($GoodChoice -eq $false)
