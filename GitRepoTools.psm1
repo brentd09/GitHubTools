@@ -6,9 +6,13 @@ function Get-FilesFromRepo {
     This command will copy files from a GitHub Repo and store them in a 
     folder of your choice.
   .EXAMPLE
-    Get-FilesFromRepo -GitHubUserName  -Repository Webproject -Destination c:\RepoCopy
-    This gets the files in the webproject repo and copies them to the the c:\RepoCopy
-    folder.
+    Get-FilesFromRepo -GitHubUserName BOB -Repository Webproject -Destination c:\RepoCopy
+    This gets the files in the webproject repo from the GitHub user BOB and copies them 
+    to the the c:\RepoCopy folder.
+  .EXAMPLE
+    Get-FilesFromRepo -GitHubUserName BOB -Destination c:\RepoCopy
+    This will present the user with a menu of Repositories for the GitHub user BOB and 
+    once a repo is selected it will copy file in the repo to the the c:\RepoCopy folder.
   .PARAMETER GitHubUserName
     This is the GitHub user site that will be used to copy the files from
   .PARAMETER Repository
@@ -44,11 +48,19 @@ function Get-FilesFromRepo {
       $count++
       Write-Host "$count - $Repo"
     }
-    [int]$choice = Read-Host -Prompt "Choose which repo"
-    $choice = $choice - 1
-    $Repository = $RepoNames[$choice]
-  }
-
+    do {
+      $GoodChoice = $true
+      $choice = Read-Host -Prompt "Choose which repo"
+      try {
+        0 + $choice
+        $choice = $choice -as [int]
+        if ($choice -gt $RepoNames.Count -or $choice -lt 1) {throw}
+      }
+      catch {$GoodChoice = $false}
+      $choice = $choice - 1
+      $Repository = $RepoNames[$choice]
+    } while ($GoodChoice -eq $false)
+  } #END if
   $URI = "https://api.github.com/repos/$GitHubUserName/$Repository/contents/$PathInRepo"
   $WebData = Invoke-WebRequest -Uri $($URI)
   $WebContent = $WebData.Content | ConvertFrom-Json
@@ -56,10 +68,10 @@ function Get-FilesFromRepo {
   if ((Test-Path $Destination) -eq $false) {
       try {New-Item -Path $Destination -ItemType Directory -ErrorAction Stop > $null} 
       catch {Write-Warning "Could not create path '$Destination'!"}
-  }
+  } #END if
   foreach ($DownloadURL in $DownloadURLS) {
       $DestinationFilePath = Join-Path $Destination (Split-Path $DownloadURL -Leaf)
       try {Invoke-WebRequest -Uri $DownloadURL -OutFile $DestinationFilePath -ErrorAction Stop -Verbose}
       catch {Write-Warning "Unable to download '$($DownloadURL.path)'"}
-  }
-}
+  } #END foreach
+} #END function
