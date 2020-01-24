@@ -78,3 +78,80 @@ function Get-FilesFromRepo {
       catch {Write-Warning "Unable to download '$($DownloadURL.path)'"}
   } #END foreach
 } #END function
+
+
+function New-GitHubRepoClone {
+  <#
+  .SYNOPSIS
+    This will clone a GitHub repo onto your current machine
+  .DESCRIPTION
+    If the repo is not supplied as a parameter, this command will list all public repos
+    for the given GitGub user and ask you to select one from a menu. The repo will then 
+    be cloned into the TEMP/Git\<RepoName> directory by default unless this is also 
+    specified as a parameter.
+  .EXAMPLE
+    New-GitHubRepoClone 
+    This will use the default values for GitHubame and Destination and then present a 
+    menu in which you can choose the repository that you wish to clone
+  .EXAMPLE
+    New-GitHubRepoClone -GitHubUserName BrentD09
+    This will use the Brentd09 for GitHubame and use the default location for the Destination 
+    and then present a menu in which you can choose the repository that you wish to clone
+  .EXAMPLE
+    New-GitHubRepoClone -GitHubUserName BrentD09 -Repository PSCourseScripts
+    This will use the Brentd09 for GitHubame and will clone the PSCourseScripts repository
+    into the default value for the destination.  
+  .EXAMPLE
+    New-GitHubRepoClone -GitHubUserName BrentD09 -Repository PSCourseScripts -Destination D:\Git\
+    This will use the Brentd09 for GitHubame and will clone the PSCourseScripts repository
+    into the d:\Git\PSCourseScripts directory
+  .NOTES
+    General notes
+      Created by: Brent Denny
+      Created on: 24 Jan 2020
+  #>
+  [cmdletbinding()]
+  Param(
+    [string]$GitHubUserName = 'BrentD09',
+    [string]$Repository = '',
+    [string]$Destination = "$env:TEMP\Git\"
+  )
+  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+  if ($Repository -eq '') {
+    $AllRepos = (Invoke-RestMethod -Uri "https://api.github.com/users/$GitHubUserName/repos").URL
+    $RepoNames = Split-Path -Path $AllRepos -Leaf 
+    Clear-Host
+    Write-Host 'Which Repo'
+    $count = 0
+    Foreach ($Repo in $RepoNames) {
+      $count++
+      if ($Count -le 9) {$Spc=' '}
+      else {$Spc=''}
+      Write-Host "$Spc$count - $Repo"
+    }
+    do {
+      $GoodChoice = $true
+      $choice = Read-Host -Prompt "Choose which repo"
+      try {
+        0 + $choice > $null
+        $choice = $choice -as [int]
+        if ($choice -gt $RepoNames.Count -or $choice -lt 1) {throw}
+      }
+      catch {
+        $GoodChoice = $false
+        continue
+      }
+      $choice = $choice - 1
+      $RepositoryName = $RepoNames[$choice]
+    } while ($GoodChoice -eq $false)
+  }  
+  $Repository = 'https://github.com/' + $GitHubUserName + '/' + $RepositoryName
+  $FullDestination = $Destination.TrimEnd('\') + '\' + $RepositoryName
+  $ErrorActionPreference = 'Stop'
+  try {
+    if (Test-Path $FullDestination) {throw}
+    git clone $Repository  $FullDestination
+  }
+  catch {Write-Warning 'Something went wrong with the cloning of the repository'}
+}
+
